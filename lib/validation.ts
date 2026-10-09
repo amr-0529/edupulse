@@ -18,6 +18,11 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter your password."),
 });
 
+/** Strip characters that have meaning in PostgREST filter strings / LIKE patterns. */
+export function sanitizeSearch(q: string): string {
+  return q.replace(/[%,()*\\_"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+}
+
 export function fieldErrorsFrom(err: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
   for (const issue of err.issues) {
