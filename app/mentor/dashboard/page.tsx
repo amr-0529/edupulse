@@ -1,8 +1,11 @@
 export default function MentorDashboard() {
   return (
-    <main className="mx-auto max-w-3xl px-5 py-10">
+    <>
+      <p className="font-bold text-brand">MENTOR SPACE</p>
       <h1 className="text-3xl font-extrabold">Mentor dashboard</h1>
-      <p className="mt-3 text-zinc-600">Coming in the next ticket.</p>
-    </main>
+      <p className="mt-3 text-muted">
+        Your incoming requests, availability and student messages will appear here in the next tickets.
+      </p>
+    </>
   );
 }
