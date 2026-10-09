@@ -7,6 +7,26 @@ export interface Profile {
   is_active: boolean;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface MentorCard {
+  id: string;
+  full_name: string;
+  headline: string;
+  job_title: string;
+  organisation: string;
+  education: string;
+  years_experience: number;
+  skills: string[];
+  bio: string;
+  category_id: string;
+  category_name: string;
+}
+
 export type ConnectionStatus = "pending" | "accepted" | "declined";
 
 export interface ActionState {
