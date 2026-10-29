@@ -18,6 +18,11 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter your password."),
 });
 
+export const chatMessageSchema = z
+  .string()
+  .transform((s) => s.trim())
+  .pipe(z.string().min(1, "Type a message first.").max(1000, "Messages can be up to 1000 characters."));
+
 /** Strip characters that have meaning in PostgREST filter strings / LIKE patterns. */
 export function sanitizeSearch(q: string): string {
   return q.replace(/[%,()*\\_"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
