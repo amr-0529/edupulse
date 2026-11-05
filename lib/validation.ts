@@ -36,3 +36,22 @@ export function fieldErrorsFrom(err: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+/** SRS FR-10.1: future slot, end after start, 15–120 minutes. Times are Sri Lanka time (UTC+05:30, no DST). */
+export function slotToIso(date: string, time: string): string {
+  return `${date}T${time}:00+05:30`;
+}
+
+export function validateSlot(date: string, start: string, end: string, now: Date = new Date()): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) {
+    return "Enter a date, start time and end time.";
+  }
+  const s = new Date(slotToIso(date, start));
+  const e = new Date(slotToIso(date, end));
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "Enter a valid date and time.";
+  if (s <= now) return "The slot must be in the future.";
+  if (e <= s) return "End time must be after start time.";
+  const mins = (e.getTime() - s.getTime()) / 60000;
+  if (mins < 15 || mins > 120) return "A slot must be between 15 and 120 minutes.";
+  return null;
+}
