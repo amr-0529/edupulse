@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Brand background with smooth rounded corners -->
+  <rect width="64" height="64" rx="16" fill="#047857"/>
+  
+  <!-- Stylized letter 'E' -->
+  <path d="M18 20h18v7H26v5h10v7H26v5h12v7H18V20z" fill="#fffaf5"/>
+  
+  <!-- Heartbeat / Pulse line -->
+  <path d="M40 42h3l2-4 4 8 2-4h3" fill="none" stroke="#ecfdf5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
