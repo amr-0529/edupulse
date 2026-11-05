@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signInAction, signUpAction } from "@/app/actions/auth";
-import { addSlotAction } from "@/app/actions/availability";
 import { FieldError, FormMessage, SubmitButton } from "@/components/ui";
 import { initialState } from "@/lib/types";
 
@@ -202,32 +201,6 @@ export function RegisterForm({
           Log in
         </Link>
       </p>
-    </form>
-  );
-}
-
-export function AddSlotForm() {
-  const [state, action, isPending] = useActionState(addSlotAction, initialState);
-  return (
-    <form action={action} className="rounded-2xl border border-emerald-100 bg-white p-6" noValidate>
-      <h2 className="text-lg font-bold">Publish a time slot (Sri Lanka time)</h2>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div>
-          <label className="mb-1 block text-sm font-semibold" htmlFor="date">Date</label>
-          <input id="date" name="date" type="date" className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-emerald-600" required />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-semibold" htmlFor="start">Start</label>
-          <input id="start" name="start" type="time" className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-emerald-600" required />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-semibold" htmlFor="end">End</label>
-          <input id="end" name="end" type="time" className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-emerald-600" required />
-        </div>
-      </div>
-      <p className="mt-2 text-xs text-zinc-500">Slots must be in the future, 15–120 minutes long, and must not overlap.</p>
-      <FormMessage state={state} />
-      <SubmitButton className="mt-3" pending="Publishing…" isPending={isPending}>Add slot</SubmitButton>
     </form>
   );
 }
