@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { ConnectPanel, type ConnState } from "@/components/ConnectPanel";
-import { formatSlt } from "@/lib/format";
+import { SessionRequestPanel, ReportUser } from "@/components/session-ui";
+import { formatDate } from "@/lib/format";
 import type { MentorCard } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -45,9 +46,14 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
             .from("availability_slots")
             .select("id, starts_at, ends_at")
             .eq("mentor_id", m.id)
+            .eq("status", "open")
+            .gt("starts_at", new Date().toISOString())
             .order("starts_at")
         ).data ?? []
       : [];
+
+  const { data: reviewData } = await supabase.rpc("mentor_reviews", { p_mentor_id: m.id });
+  const reviews = (reviewData ?? []) as { rating: number; comment: string; created_at: string; student_first_name: string }[];
 
   return (
     <>
@@ -86,7 +92,13 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
             </div>
             <div>
               <dt className="text-muted">Rating</dt>
-              <dd>No reviews yet</dd>
+              <dd>
+                {m.review_count > 0 ? (
+                  <span className="text-warn">★ {m.avg_rating} <span className="text-muted font-normal">({m.review_count})</span></span>
+                ) : (
+                  "No reviews yet"
+                )}
+              </dd>
             </div>
           </dl>
 
@@ -110,6 +122,29 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
             <ConnectPanel mentorId={m.id} state={state} />
           </div>
 
+          <div className="px-1">
+            <ReportUser userId={m.id} name={m.full_name} />
+          </div>
+
+          <div className="card">
+            <h2 className="font-semibold">Student reviews</h2>
+            {reviews.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">No reviews yet.</p>
+            ) : (
+              <ul className="mt-2 space-y-2 text-sm">
+                {reviews.map((r, i) => (
+                  <li key={i}>
+                    <div className="text-warn">
+                      {"★".repeat(r.rating)}<span className="text-line">{"★".repeat(5 - r.rating)}</span>
+                    </div>
+                    {r.comment && <span className="whitespace-pre-wrap">{r.comment}</span>}{" "}
+                    <span className="text-muted">— {r.student_first_name}, {formatDate(r.created_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="card">
             <h2 className="font-semibold">Availability</h2>
             {state.kind !== "accepted" ? (
@@ -117,14 +152,7 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
             ) : slots.length === 0 ? (
               <p className="mt-2 text-sm text-muted">No open slots right now.</p>
             ) : (
-              <>
-                <ul className="mt-2 space-y-1 text-sm">
-                  {slots.map((s) => (
-                    <li key={s.id}>{formatSlt(s.starts_at)}</li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-xs text-muted">Session requests are planned for the next phase.</p>
-              </>
+              <SessionRequestPanel slots={slots} />
             )}
           </div>
         </div>

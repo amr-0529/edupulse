@@ -10,6 +10,7 @@ const NAV: Record<Role, [string, string][]> = {
     ["/student/discover", "Find mentors"],
     ["/student/connections", "Connections"],
     ["/student/messages", "Messages"],
+    ["/student/sessions", "Sessions"],
     ["/student/profile", "Profile"],
   ],
   mentor: [
@@ -17,12 +18,15 @@ const NAV: Record<Role, [string, string][]> = {
     ["/mentor/requests", "Requests"],
     ["/mentor/availability", "Availability"],
     ["/mentor/messages", "Messages"],
+    ["/mentor/sessions", "Sessions"],
     ["/mentor/profile", "Profile"],
   ],
   admin: [
     ["/admin/dashboard", "Overview"],
     ["/admin/approvals", "Mentor approvals"],
     ["/admin/users", "Users"],
+    ["/admin/reports", "Reports"],
+    ["/admin/categories", "Categories"],
   ],
 };
 
@@ -57,6 +61,7 @@ export function Shell({
             ))}
           </nav>
           <div className="flex items-center gap-3">
+            <Link href="/help" className="hidden text-sm text-muted underline sm:inline">Help</Link>
             <span className="hidden text-sm text-muted sm:inline">{name}</span>
             <ThemeToggle />
             <form action={signOutAction}>
@@ -69,5 +74,54 @@ export function Shell({
       </header>
       <main className={`${CONTAINER} py-6 md:py-8 lg:py-10`}>{children}</main>
     </>
+  );
+}
+
+export function PublicTop() {
+  return (
+    <header className="sticky top-0 z-10 border-b border-line bg-card/95 backdrop-blur">
+      <div className={`${CONTAINER} flex items-center justify-between py-3 md:py-4`}>
+        <Link href="/" className="text-xl font-extrabold text-brand md:text-2xl">
+          EduPulse
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/help" className="hidden text-sm text-muted underline sm:inline">Help</Link>
+          <ThemeToggle />
+          <Link href="/login" className="btn btn-outline btn-sm">
+            Log in
+          </Link>
+          <Link href="/register" className="btn btn-sm">
+            Join EduPulse
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export function Avatar({ name, path, size = 44 }: { name: string; path?: string | null; size?: number }) {
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  const url = path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${path}` : null;
+  if (url) {
+    return <img src={url} alt="" width={size} height={size} className="flex-none rounded-full border border-line object-cover" style={{ width: size, height: size }} />;
+  }
+  return (
+    <div aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-full border border-line bg-soft text-lg font-bold text-brand" style={{ width: size, height: size }}>
+      {initial}
+    </div>
+  );
+}
+
+export function Badge({ children, tone = "ok" }: { children: React.ReactNode; tone?: "ok" | "warn" | "bad" | "muted" }) {
+  const t = { ok: "bg-soft text-brand", warn: "bg-soft text-warn", bad: "bg-soft text-danger", muted: "bg-soft text-muted" }[tone];
+  return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${t}`}>{children}</span>;
+}
+
+export function Empty({ title, children }: { title: string; children?: React.ReactNode }) {
+  return (
+    <div className="card text-center">
+      <p className="font-semibold">{title}</p>
+      {children && <div className="mt-2 text-sm text-muted">{children}</div>}
+    </div>
   );
 }
