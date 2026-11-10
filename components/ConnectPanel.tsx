@@ -23,7 +23,7 @@ export function ConnectPanel({ mentorId, state }: { mentorId: string; state: Con
     return (
       <div>
         <p className="font-semibold text-brand">✓ You are connected</p>
-        <p className="mt-2 text-xs text-muted">Chat will be enabled in the next update (SCRUM-18).</p>
+        <p className="mt-2 text-xs text-muted">You can now message this mentor and request sessions.</p>
       </div>
     );
   }

@@ -6,6 +6,9 @@ import type { Role } from "@/lib/types";
 
 type Conn = {
   id: string;
+  status: "accepted" | "removed";
+  student_id: string;
+  mentor_id: string;
   student: { full_name: string } | { full_name: string }[] | null;
   mentor: { full_name: string } | { full_name: string }[] | null;
 };
@@ -16,20 +19,17 @@ export async function MessagesView({ role, meId, selected }: { role: Role; meId:
 
   const { data, error } = await supabase
     .from("connections")
-    .select("id, student:profiles!connections_student_id_fkey(full_name), mentor:profiles!connections_mentor_id_fkey(full_name)")
-    .eq("status", "accepted");
+    .select("id, status, student_id, mentor_id, student:profiles!connections_student_id_fkey(full_name), mentor:profiles!connections_mentor_id_fkey(full_name)")
+    .in("status", ["accepted", "removed"]);
 
   if (error) {
-    return (
-      <div className="card text-center">
-        <p className="font-semibold">Messages could not be loaded.</p>
-        <p className="mt-2 text-sm text-muted">Please refresh the page to retry.</p>
-      </div>
-    );
+    return <div className="card text-center"><p className="font-semibold">Messages could not be loaded.</p><p className="mt-2 text-sm text-muted">Please refresh the page to retry.</p></div>;
   }
 
   const convs = ((data ?? []) as unknown as Conn[]).map((c) => ({
     id: c.id,
+    readOnly: c.status === "removed",
+    otherId: role === "student" ? c.mentor_id : c.student_id,
     other: (role === "student" ? one(c.mentor)?.full_name : one(c.student)?.full_name) ?? "Unknown user",
   }));
 
@@ -56,6 +56,7 @@ export async function MessagesView({ role, meId, selected }: { role: Role; meId:
     .order("created_at", { ascending: false })
     .limit(50);
   const initial = ((history ?? []) as Msg[]).slice().reverse();
+  const hasMore = (history ?? []).length === 50;
 
   return (
     <div className="grid gap-4 md:grid-cols-[18rem_1fr]">
@@ -71,11 +72,12 @@ export async function MessagesView({ role, meId, selected }: { role: Role; meId:
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{c.other}</p>
+              <p className="truncate text-xs text-muted">{c.readOnly ? "Connection ended · read-only" : "Active"}</p>
             </div>
           </Link>
         ))}
       </aside>
-      <ChatClient key={active.id} connectionId={active.id} meId={meId} otherName={active.other} initial={initial} />
+      <ChatClient key={active.id} connectionId={active.id} meId={meId} otherName={active.other} otherId={active.otherId} readOnly={active.readOnly} hasMore={hasMore} initial={initial} />
     </div>
   );
 }

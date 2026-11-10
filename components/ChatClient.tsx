@@ -4,23 +4,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { chatMessageSchema } from "@/lib/validation";
+import { ReportUser } from "@/components/session-ui";
 
-export interface Msg {
-  id: string;
-  sender_id: string;
-  body: string;
-  created_at: string;
-}
+export interface Msg { id: string; sender_id: string; body: string; created_at: string }
 
 export function ChatClient({
   connectionId,
   meId,
   otherName,
+  otherId,
+  readOnly,
+  hasMore: initialHasMore,
   initial,
 }: {
   connectionId: string;
   meId: string;
   otherName: string;
+  otherId: string;
+  readOnly: boolean;
+  hasMore: boolean;
   initial: Msg[];
 }) {
   const supabase = useMemo(() => createClient(), []);
@@ -30,6 +32,9 @@ export function ChatClient({
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [live, setLive] = useState(false);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const keepBottom = useRef(true);
   const bottom = useRef<HTMLDivElement>(null);
 
   const merge = useCallback((incoming: Msg[]) => {
@@ -77,8 +82,30 @@ export function ChatClient({
     };
   }, [supabase, connectionId, meId, merge, markRead, refetch]);
 
+  async function loadOlder() {
+    const oldest = msgs[0]?.created_at;
+    if (!oldest) return;
+    setLoadingOlder(true);
+    const { data, error: e } = await supabase
+      .from("messages")
+      .select("id, sender_id, body, created_at")
+      .eq("connection_id", connectionId)
+      .lt("created_at", oldest)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setLoadingOlder(false);
+    if (e) {
+      setError("Older messages could not be loaded. Please try again.");
+      return;
+    }
+    keepBottom.current = false;
+    merge((data ?? []) as Msg[]);
+    setHasMore((data ?? []).length === 50);
+  }
+
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    if (keepBottom.current) bottom.current?.scrollIntoView({ block: "end" });
+    keepBottom.current = true;
   }, [msgs]);
 
   async function send(e: React.FormEvent) {
@@ -108,10 +135,18 @@ export function ChatClient({
     <div className="card flex h-[28rem] flex-col p-0 md:h-[32rem]">
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <h2 className="font-semibold">{otherName}</h2>
-        <span className={`text-xs ${live ? "text-brand" : "text-muted"}`}>{live ? "● Live" : "○ Connecting…"}</span>
+        <span className={`text-xs ${readOnly ? "text-muted" : live ? "text-brand" : "text-muted"}`}>{readOnly ? "Read-only" : live ? "● Live" : "○ Connecting…"}</span>
       </div>
+      <div className="border-b border-line px-4 py-1"><ReportUser userId={otherId} name={otherName} /></div>
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3" aria-live="polite">
-        {msgs.length === 0 && <p className="text-center text-sm text-muted">No messages yet. Say hello!</p>}
+        {hasMore && (
+          <div className="text-center">
+            <button type="button" className="btn btn-outline btn-sm" onClick={loadOlder} disabled={loadingOlder}>
+              {loadingOlder ? "Loading…" : "Load older messages"}
+            </button>
+          </div>
+        )}
+        {msgs.length === 0 && <p className="text-center text-sm text-muted">{readOnly ? "No messages." : "No messages yet. Say hello!"}</p>}
         {msgs.map((m) => {
           const mine = m.sender_id === meId;
           return (
@@ -124,6 +159,9 @@ export function ChatClient({
         })}
         <div ref={bottom} />
       </div>
+      {readOnly ? (
+        <p className="border-t border-line p-3 text-center text-sm text-muted">This connection was removed. You can read the history but cannot send new messages.</p>
+      ) : (
       <form onSubmit={send} className="border-t border-line p-3">
         <div className="flex gap-2">
           <input
@@ -144,6 +182,7 @@ export function ChatClient({
           </p>
         )}
       </form>
+      )}
     </div>
   );
 }
