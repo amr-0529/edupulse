@@ -99,14 +99,25 @@ export function PublicTop() {
   );
 }
 
+export function avatarUrl(path: string | null | undefined): string | null {
+  if (!path || !process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+}
+
 export function Avatar({ name, path, size = 44 }: { name: string; path?: string | null; size?: number }) {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
-  const url = path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${path}` : null;
+  const url = avatarUrl(path);
   if (url) {
-    return <img src={url} alt="" width={size} height={size} className="flex-none rounded-full border border-line object-cover" style={{ width: size, height: size }} />;
+    return (
+      <img src={url} alt="" width={size} height={size} className="flex-none rounded-full border border-line object-cover" style={{ width: size, height: size }} />
+    );
   }
   return (
-    <div aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-full border border-line bg-soft text-lg font-bold text-brand" style={{ width: size, height: size }}>
+    <div
+      aria-hidden
+      className="grid h-11 w-11 flex-none place-items-center rounded-full border border-line bg-soft text-lg font-bold text-brand"
+      style={{ width: size, height: size }}
+    >
       {initial}
     </div>
   );
@@ -115,6 +126,24 @@ export function Avatar({ name, path, size = 44 }: { name: string; path?: string 
 export function Badge({ children, tone = "ok" }: { children: React.ReactNode; tone?: "ok" | "warn" | "bad" | "muted" }) {
   const t = { ok: "bg-soft text-brand", warn: "bg-soft text-warn", bad: "bg-soft text-danger", muted: "bg-soft text-muted" }[tone];
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${t}`}>{children}</span>;
+}
+
+export function Rating({ avg, count }: { avg: number | null | undefined; count: number | null | undefined }) {
+  if (!count || avg === null || avg === undefined) return <span className="text-xs text-muted">No reviews yet</span>;
+  return (
+    <span className="text-sm font-semibold" aria-label={`Rated ${avg} out of 5 from ${count} review${count === 1 ? "" : "s"}`}>
+      <span className="text-warn" aria-hidden>★</span> {Number(avg).toFixed(1)}{" "}
+      <span className="font-normal text-muted">({count})</span>
+    </span>
+  );
+}
+
+export function Stars({ value }: { value: number }) {
+  return (
+    <span className="text-warn" role="img" aria-label={`${value} out of 5 stars`}>
+      {"★".repeat(value)}<span className="text-line">{"★".repeat(5 - value)}</span>
+    </span>
+  );
 }
 
 export function Empty({ title, children }: { title: string; children?: React.ReactNode }) {
