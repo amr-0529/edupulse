@@ -6,13 +6,9 @@ import { loginSchema, registerSchema, fieldErrorsFrom, emailSchema, newPasswordS
 import { HOME_BY_ROLE, type ActionState, type Role } from "@/lib/types";
 
 export async function signUpAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const parsed = registerSchema.safeParse({
-    fullName: formData.get("fullName"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    role: formData.get("role"),
-  });
-  if (!parsed.success) return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
+  const values = Object.fromEntries(formData.entries()) as Record<string, string>;
+  const parsed = registerSchema.safeParse(values);
+  if (!parsed.success) return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error), values };
   const { fullName, email, password, role } = parsed.data;
 
   const supabase = await createClient();
@@ -24,38 +20,38 @@ export async function signUpAction(_prev: ActionState, formData: FormData): Prom
   });
 
   if (error) {
-    if (/already registered/i.test(error.message))
-      return { ok: false, fieldErrors: { email: "This email is already registered." } };
-    return { ok: false, error: "We could not create your account. Please try again." };
+    if (/already registered/i.test(error.message)) return { ok: false, fieldErrors: { email: "This email is already registered." }, values };
+    return { ok: false, error: "We could not create your account. Please try again.", values };
   }
   if (data.user && data.user.identities?.length === 0) {
-    return { ok: false, fieldErrors: { email: "This email is already registered." } };
+    return { ok: false, fieldErrors: { email: "This email is already registered." }, values };
   }
   if (data.session) redirect(HOME_BY_ROLE[role as Role]);
   return { ok: true, message: "Account created. Check your email and click the verification link, then log in." };
 }
 
 export async function signInAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const parsed = loginSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
-  if (!parsed.success) return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
+  const values = Object.fromEntries(formData.entries()) as Record<string, string>;
+  const parsed = loginSchema.safeParse({ email: values.email, password: values.password });
+  if (!parsed.success) return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error), values };
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error || !data.user) {
     if (error && /not confirmed/i.test(error.message)) {
-      return { ok: false, error: "Please verify your email first. Check your inbox for the verification link." };
+      return { ok: false, error: "Please verify your email first. Check your inbox for the verification link.", values };
     }
-    return { ok: false, error: "Invalid email or password." };
+    return { ok: false, error: "Invalid email or password.", values };
   }
 
   const { data: profile } = await supabase.from("profiles").select("role, is_active").eq("id", data.user.id).single();
   if (!profile) {
     await supabase.auth.signOut();
-    return { ok: false, error: "Your account profile could not be loaded. Please contact an administrator." };
+    return { ok: false, error: "Your account profile could not be loaded. Please contact an administrator.", values };
   }
   if (!profile.is_active) {
     await supabase.auth.signOut();
-    return { ok: false, error: "This account has been deactivated." };
+    return { ok: false, error: "This account has been deactivated.", values };
   }
   redirect(HOME_BY_ROLE[profile.role as Role]);
 }
@@ -67,8 +63,9 @@ export async function signOutAction() {
 }
 
 export async function resendVerificationAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const email = emailSchema.safeParse(fd.get("email") ?? "");
-  if (!email.success) return { ok: false, fieldErrors: { email: email.error.issues[0].message } };
+  const values = Object.fromEntries(fd.entries()) as Record<string, string>;
+  const email = emailSchema.safeParse(values.email ?? "");
+  if (!email.success) return { ok: false, fieldErrors: { email: email.error.issues[0].message }, values };
   const supabase = await createClient();
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { error } = await supabase.auth.resend({ type: "signup", email: email.data, options: { emailRedirectTo: `${site}/auth/callback` } });
@@ -77,8 +74,9 @@ export async function resendVerificationAction(_p: ActionState, fd: FormData): P
 }
 
 export async function requestPasswordResetAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const email = emailSchema.safeParse(fd.get("email") ?? "");
-  if (!email.success) return { ok: false, fieldErrors: { email: email.error.issues[0].message } };
+  const values = Object.fromEntries(fd.entries()) as Record<string, string>;
+  const email = emailSchema.safeParse(values.email ?? "");
+  if (!email.success) return { ok: false, fieldErrors: { email: email.error.issues[0].message }, values };
   const supabase = await createClient();
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { error } = await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${site}/auth/callback?next=/reset-password` });
@@ -87,15 +85,16 @@ export async function requestPasswordResetAction(_p: ActionState, fd: FormData):
 }
 
 export async function updatePasswordAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const parsed = newPasswordSchema.safeParse({ password: fd.get("password") ?? "", confirm: fd.get("confirm") ?? "" });
-  if (!parsed.success) return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
+  const values = Object.fromEntries(fd.entries()) as Record<string, string>;
+  const parsed = newPasswordSchema.safeParse({ password: values.password ?? "", confirm: values.confirm ?? "" });
+  if (!parsed.success) return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error), values };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "This reset link has expired or was already used. Please request a new one." };
+  if (!user) return { ok: false, error: "This reset link has expired or was already used. Please request a new one.", values };
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) {
     console.error("[PASSWORD UPDATE ERROR]", error.message);
-    return { ok: false, error: "We could not update your password. Please request a new reset link." };
+    return { ok: false, error: "We could not update your password. Please request a new reset link.", values };
   }
   await supabase.auth.signOut();
   redirect("/login?reset=1");

@@ -28,6 +28,8 @@ export interface MentorCard {
   avg_rating: number | null;
   review_count: number;
   avatar_path: string | null;
+  linkedin_url: string | null;
+  custom_category: string | null;
 }
 
 export type ConnectionStatus = "pending" | "accepted" | "declined" | "removed";
@@ -62,6 +64,7 @@ export interface ActionState {
   error?: string;
   fieldErrors?: Record<string, string>;
   code?: string;
+  values?: Record<string, string | boolean>; // Added for form preservation
 }
 
 export const initialState: ActionState = { ok: false };
