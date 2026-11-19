@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { chatMessageSchema } from "@/lib/validation";
 import { ReportUser } from "@/components/session-ui";
+import { Avatar } from "@/components/Shell";
 
 export interface Msg { id: string; sender_id: string; body: string; created_at: string }
 
@@ -13,6 +15,7 @@ export function ChatClient({
   meId,
   otherName,
   otherId,
+  otherAvatar,
   readOnly,
   hasMore: initialHasMore,
   initial,
@@ -21,6 +24,7 @@ export function ChatClient({
   meId: string;
   otherName: string;
   otherId: string;
+  otherAvatar: string | null;
   readOnly: boolean;
   hasMore: boolean;
   initial: Msg[];
@@ -134,7 +138,10 @@ export function ChatClient({
   return (
     <div className="card flex h-[28rem] flex-col p-0 md:h-[32rem]">
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
-        <h2 className="font-semibold">{otherName}</h2>
+        <Link href={`/profile/${otherId}`} className="flex items-center gap-3 hover:underline">
+          <Avatar name={otherName} path={otherAvatar} size={32} />
+          <h2 className="font-semibold">{otherName}</h2>
+        </Link>
         <span className={`text-xs ${readOnly ? "text-muted" : live ? "text-brand" : "text-muted"}`}>{readOnly ? "Read-only" : live ? "● Live" : "○ Connecting…"}</span>
       </div>
       <div className="border-b border-line px-4 py-1"><ReportUser userId={otherId} name={otherName} /></div>
