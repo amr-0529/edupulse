@@ -6,18 +6,19 @@ import { ActionButton } from "@/components/ActionButton";
 import { respondConnection } from "@/app/actions/connections";
 import { removeConnectionAction } from "@/app/actions/sessions";
 import { formatDate } from "@/lib/format";
+import { Avatar } from "@/components/Shell";
 
 type SP = { institution: string; field_of_study: string; year_of_study: string; interests: string; bio: string };
 type Row = {
   id: string; status: "pending" | "accepted" | "declined" | "removed"; intro_message: string; created_at: string;
-  student: { full_name: string; student_profiles: SP | SP[] | null } | { full_name: string; student_profiles: SP | SP[] | null }[] | null;
+  student: { id: string; full_name: string; avatar_path: string | null; student_profiles: SP | SP[] | null } | { id: string; full_name: string; avatar_path: string | null; student_profiles: SP | SP[] | null }[] | null;
 };
 
 export default async function MentorRequests() {
   const me = await requireRole("mentor");
   const supabase = await createClient();
   const { data, error } = await supabase.from("connections")
-    .select("id, status, intro_message, created_at, student:profiles!connections_student_id_fkey(full_name, student_profiles(institution, field_of_study, year_of_study, interests, bio))")
+    .select("id, status, intro_message, created_at, student:profiles!connections_student_id_fkey(id, full_name, avatar_path, student_profiles(institution, field_of_study, year_of_study, interests, bio))")
     .eq("mentor_id", me.id).order("created_at", { ascending: false });
   const rows = (data ?? []) as unknown as Row[];
   const pending = rows.filter((r) => r.status === "pending");
@@ -34,11 +35,9 @@ export default async function MentorRequests() {
           return (
             <div key={r.id} className="card">
               <div className="flex flex-wrap items-start gap-4">
-                <div aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-full border border-line bg-soft text-lg font-bold text-brand">
-                  {(st?.full_name ?? "S").trim().charAt(0).toUpperCase()}
-                </div>
+                <Avatar name={st?.full_name ?? "S"} path={st?.avatar_path} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{st?.full_name}</p>
+                  <Link href={`/profile/${st?.id}`} className="font-semibold hover:underline">{st?.full_name}</Link>
                   <p className="text-sm text-muted">{[sp?.institution, sp?.field_of_study, sp?.year_of_study].filter(Boolean).join(" · ") || "Profile not completed yet"}</p>
                   {sp?.interests && <p className="text-sm text-muted">Interests: {sp.interests}</p>}
                   <p className="mt-2 rounded-xl bg-soft p-3 text-sm">"{r.intro_message || "No intro message"}"</p>
@@ -59,7 +58,7 @@ export default async function MentorRequests() {
           <div className="mt-3 space-y-2">
             {others.map((r) => (
               <div key={r.id} className="card flex flex-wrap items-center justify-between gap-2 py-3">
-                <span>{one(r.student)?.full_name}</span>
+                <Link href={`/profile/${one(r.student)?.id}`} className="font-semibold hover:underline">{one(r.student)?.full_name}</Link>
                 <span className="flex items-center gap-3">
                   <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.status === "accepted" ? "bg-soft text-brand" : r.status === "removed" ? "bg-soft text-muted" : "bg-soft text-danger"}`}>{r.status}</span>
                   {(r.status === "accepted" || r.status === "removed") && <Link href={`/mentor/messages?c=${r.id}`} className={r.status === "accepted" ? "btn btn-sm" : "btn btn-outline btn-sm"}>{r.status === "accepted" ? "Message" : "View chat"}</Link>}
