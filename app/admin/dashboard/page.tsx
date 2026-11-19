@@ -12,10 +12,23 @@ async function count(table: string, filter?: Filter) {
   return c ?? 0;
 }
 
+function StatCard({ title, value, subtitle, icon }: { title: string; value: number; subtitle: string; icon: string }) {
+  return (
+    <div className="card flex items-start gap-4 hover:border-brand transition-colors">
+      <div className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-soft text-2xl">{icon}</div>
+      <div>
+        <p className="text-sm font-semibold text-muted">{title}</p>
+        <p className="text-3xl font-extrabold">{value}</p>
+        <p className="text-xs text-muted">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
 export default async function AdminDashboard() {
   await requireRole("admin");
-  const [students, mentors, admins, inactive, pendingMentors, pendingConn, acceptedConn, declinedConn, removedConn,
-    sPending, sAccepted, sCompleted, sDeclined, sCancelled, openReports, fbCount, activeCats] = await Promise.all([
+  
+  const [students, mentors, admins, inactive, pendingMentors, pendingConn, acceptedConn, openReports, sPending, sCompleted] = await Promise.all([
     count("profiles", { column: "role", value: "student" }),
     count("profiles", { column: "role", value: "mentor" }),
     count("profiles", { column: "role", value: "admin" }),
@@ -23,86 +36,68 @@ export default async function AdminDashboard() {
     count("mentor_profiles", { column: "approval_status", value: "pending" }),
     count("connections", { column: "status", value: "pending" }),
     count("connections", { column: "status", value: "accepted" }),
-    count("connections", { column: "status", value: "declined" }),
-    count("connections", { column: "status", value: "removed" }),
-    count("sessions", { column: "status", value: "pending" }),
-    count("sessions", { column: "status", value: "accepted" }),
-    count("sessions", { column: "status", value: "completed" }),
-    count("sessions", { column: "status", value: "declined" }),
-    count("sessions", { column: "status", value: "cancelled" }),
     count("reports", { column: "status", value: "open" }),
-    count("feedback"),
-    count("categories", { column: "is_active", value: true }),
+    count("sessions", { column: "status", value: "pending" }),
+    count("sessions", { column: "status", value: "completed" }),
   ]);
-  
-  const Stat = ({ n, l }: { n: number; l: string }) => (
-    <div className="card">
-      <p className="text-3xl font-extrabold">{n}</p>
-      <p className="text-sm text-muted">{l}</p>
-    </div>
-  );
 
   return (
-    <>
-      <p className="font-bold text-brand">ADMINISTRATION</p>
-      <h1 className="text-3xl font-extrabold">Platform overview</h1>
-      
-      <h2 className="mt-6 font-semibold">Users</h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-4">
-        <Stat n={students} l="Students" />
-        <Stat n={mentors} l="Mentors" />
-        <Stat n={admins} l="Administrators" />
-        <Stat n={inactive} l="Deactivated" />
-      </div>
-      
-      <h2 className="mt-6 font-semibold">Catalogue</h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-4">
-        <Stat n={activeCats} l="Active categories" />
-        <Stat n={openReports} l="Open reports" />
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold tracking-tight">Platform Overview</h1>
+        <p className="text-muted mt-1">Monitor system health, manage users, and moderate content.</p>
       </div>
 
-      <h2 className="mt-6 font-semibold">Connections</h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-4">
-        <Stat n={pendingConn} l="Pending" />
-        <Stat n={acceptedConn} l="Accepted" />
-        <Stat n={declinedConn} l="Declined" />
-        <Stat n={removedConn} l="Removed" />
-      </div>
+      {/* Action Required Section */}
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-warn animate-pulse"></span> Action Required
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="card bg-gradient-to-r from-warn/10 to-transparent border-warn/30 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-warn">Mentors Awaiting Review</p>
+              <p className="text-sm text-muted">New mentors need approval before being listed.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-extrabold text-warn">{pendingMentors}</span>
+              <Link href="/admin/approvals" className="btn btn-sm">Review</Link>
+            </div>
+          </div>
+          
+          <div className="card bg-gradient-to-r from-warn/10 to-transparent border-warn/30 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-warn">Open Reports</p>
+              <p className="text-sm text-muted">User reports waiting for moderation.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-extrabold text-warn">{openReports}</span>
+              <Link href="/admin/reports" className="btn btn-sm">Resolve</Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <h2 className="mt-6 font-semibold">Sessions</h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-5">
-        <Stat n={sPending} l="Pending" />
-        <Stat n={sAccepted} l="Accepted" />
-        <Stat n={sCompleted} l="Completed" />
-        <Stat n={sDeclined} l="Declined" />
-        <Stat n={sCancelled} l="Cancelled" />
-      </div>
-      
-      <div className="card mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold">Mentors awaiting review</p>
-          <p className="text-sm text-muted">New mentors are listed only after approval (FR-15.6).</p>
+      {/* System Health Section */}
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-3">System Health</h2>
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <StatCard title="Total Students" value={students} subtitle="Registered accounts" icon="🎓" />
+          <StatCard title="Active Mentors" value={mentors} subtitle="Approved and active" icon="🧑‍🏫" />
+          <StatCard title="Connections" value={acceptedConn} subtitle="Accepted pairings" icon="🤝" />
+          <StatCard title="Deactivated" value={inactive} subtitle="Accounts restricted" icon="🚫" />
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${pendingMentors ? "bg-soft text-warn" : "bg-soft text-brand"}`}>
-            {pendingMentors} pending
-          </span>
-          <Link href="/admin/approvals" className="btn btn-sm">Review</Link>
+      </section>
+
+      {/* Activity Section */}
+      <section>
+        <h2 className="text-lg font-bold mb-3">Recent Activity</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard title="Pending Connections" value={pendingConn} subtitle="Waiting for mentor" icon="⏳" />
+          <StatCard title="Pending Sessions" value={sPending} subtitle="Waiting for mentor" icon="📅" />
+          <StatCard title="Completed Sessions" value={sCompleted} subtitle="All-time mentorship" icon="✅" />
         </div>
-      </div>
-      
-      <div className="card mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold">Moderation reports</p>
-          <p className="text-sm text-muted">{fbCount} feedback entr{fbCount === 1 ? "y" : "ies"} recorded. Users can report each other (FR-15.4).</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${openReports ? "bg-soft text-warn" : "bg-soft text-brand"}`}>
-            {openReports} open
-          </span>
-          <Link href="/admin/reports" className="btn btn-sm">Review</Link>
-        </div>
-      </div>
-    </>
+      </section>
+    </div>
   );
 }
