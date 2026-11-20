@@ -68,7 +68,6 @@ function Shell({
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/help" className="hidden text-sm text-muted underline sm:inline">Help</Link>
             <span className="hidden text-sm text-muted sm:inline">{name}</span>
             <ThemeToggle />
             <form action={signOutAction}>

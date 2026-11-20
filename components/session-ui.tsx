@@ -20,30 +20,57 @@ export function SessionRequestPanel({ slots }: { slots: { id: string; starts_at:
   const [serverState, action] = useActionState(requestSessionAction, initialState);
   const cv = useClientValidation((fd) => formErrors(sessionRequestSchema, { slotId: fd.get("slotId") ?? "", topic: fd.get("topic") ?? "" }));
   const state = cv.merge(serverState);
-  if (state.ok) return <p className="mt-3 text-sm font-semibold text-brand" role="status">{state.message}</p>;
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+
+  if (state.ok) {
+    return (
+      <div className="mt-4 rounded-xl bg-soft p-4 text-center">
+        <p className="text-2xl mb-2">🎉</p>
+        <p className="text-sm font-semibold text-brand">{state.message}</p>
+      </div>
+    );
+  }
+
   return (
-    <form action={action} onSubmit={cv.onSubmit} noValidate className="mt-3">
-      <fieldset>
-        <legend className="label mt-0">Choose a time (Sri Lanka time)</legend>
-        <div className="mt-1 grid gap-2 sm:grid-cols-2">
-          {slots.map((s, i) => (
-            <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded-xl border border-line p-2 text-sm has-[:checked]:border-brand has-[:checked]:bg-soft">
-              <input type="radio" name="slotId" value={s.id} defaultChecked={i === 0 && slots.length === 1} />
-              <span>{formatSlt(s.starts_at)} <span className="text-muted">· {durationMins(s.starts_at, s.ends_at)} min</span></span>
-            </label>
-          ))}
-        </div>
-        <FieldError state={state} name="slotId" />
-      </fieldset>
-      <label className="label" htmlFor="topic">What would you like to discuss?</label>
-      <textarea id="topic" name="topic" rows={3} maxLength={500} className="input" />
-      <FieldError state={state} name="topic" />
-      <FormMessage state={state} />
-      <SubmitButton className="mt-3" pending="Requesting…">Request session</SubmitButton>
-    </form>
+    <div className="mt-3">
+      <label className="label mt-0 mb-2">Select an available time</label>
+      
+      <div className="grid gap-2 sm:grid-cols-2">
+        {slots.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => setSelectedSlot(s.id)}
+            className={`flex flex-col items-center justify-center rounded-xl border p-3 text-sm transition-all ${
+              selectedSlot === s.id 
+                ? "border-brand bg-soft ring-1 ring-brand" 
+                : "border-line bg-card hover:border-brand hover:bg-soft/50"
+            }`}
+          >
+            <span className="font-semibold text-brand">{formatSlt(s.starts_at)}</span>
+            <span className="text-xs text-muted">{durationMins(s.starts_at, s.ends_at)} minutes</span>
+          </button>
+        ))}
+      </div>
+
+      {selectedSlot && (
+        <form action={action} onSubmit={cv.onSubmit} noValidate className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+          <input type="hidden" name="slotId" value={selectedSlot} />
+          <label className="label" htmlFor="topic">What would you like to discuss?</label>
+          <textarea id="topic" name="topic" rows={3} maxLength={500} className="input" placeholder="Briefly describe what you need help with..." required />
+          <FieldError state={state} name="topic" />
+          <FormMessage state={state} />
+          <div className="mt-3 flex gap-2">
+            <SubmitButton className="flex-1" pending="Requesting…">Request Session</SubmitButton>
+            <button type="button" onClick={() => setSelectedSlot(null)} className="btn btn-outline">Cancel</button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
+// ... (Leave MeetingLinkForm, FeedbackForm, ReportUser, EditSlotForm, ResolveReportForm, CategoryForm, AvatarUploader exactly as they were in SCRUM-26, no changes needed)
 export function MeetingLinkForm({ sessionId, current }: { sessionId: string; current: string | null }) {
   const [serverState, action] = useActionState(setMeetingLinkAction.bind(null, sessionId), initialState);
   const cv = useClientValidation((fd) => {
