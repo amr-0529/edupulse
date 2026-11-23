@@ -1,35 +1,23 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
+import { one } from "@/lib/queries";
 import { ActionButton } from "@/components/ActionButton";
+import { Avatar, Badge, Empty } from "@/components/Shell";
 import { reviewMentorAction } from "@/app/actions/admin";
 import { formatDate } from "@/lib/format";
 
 type Row = {
-  id: string; 
-  headline: string; 
-  job_title: string; 
-  organisation: string; 
-  education: string; 
-  years_experience: number;
-  skills: string[]; 
-  bio: string; 
-  approval_status: string; 
-  reviewed_at: string | null;
-  profile: { full_name: string } | { full_name: string }[] | null; 
-  category: { name: string } | { name: string }[] | null;
+  id: string; headline: string; job_title: string; organisation: string; education: string; years_experience: number;
+  skills: string[]; bio: string; approval_status: string; reviewed_at: string | null; linkedin_url: string | null; custom_category: string | null;
+  profile: { full_name: string } | { full_name: string }[] | null; category: { name: string } | { name: string }[] | null;
 };
-
-function one<T>(x: T | T[] | null | undefined): T | null {
-  if (!x) return null;
-  return Array.isArray(x) ? x[0] ?? null : x;
-}
 
 export default async function Approvals() {
   await requireRole("admin");
   const supabase = await createClient();
   
   const { data, error } = await supabase.from("mentor_profiles")
-    .select("id, headline, job_title, organisation, education, years_experience, skills, bio, approval_status, reviewed_at, profile:profiles!mentor_profiles_id_fkey(full_name), category:categories(name)")
+    .select("id, headline, job_title, organisation, education, years_experience, skills, bio, approval_status, reviewed_at, linkedin_url, custom_category, profile:profiles!mentor_profiles_id_fkey(full_name), category:categories(name)")
     .order("created_at", { ascending: false });
     
   const rows = (data ?? []) as unknown as Row[];
@@ -44,33 +32,42 @@ export default async function Approvals() {
       
       <div className="mt-4 space-y-3">
         {pending.length === 0 && !error && (
-          <div className="card text-center">
-            <p className="font-semibold">No mentors waiting for review</p>
-          </div>
+          <Empty title="No mentors waiting for review" />
         )}
         
         {pending.map((r) => {
           const name = one(r.profile)?.full_name ?? "Mentor";
-          const complete = !!r.headline.trim() && r.skills.length > 0 && !!one(r.category);
+          const complete = !!r.headline.trim() && r.skills.length > 0 && !!(one(r.category) || r.custom_category) && !!r.linkedin_url;
           
           return (
             <div key={r.id} className="card">
               <div className="flex flex-wrap items-start gap-4">
-                <div aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-full border border-line bg-soft text-lg font-bold text-brand">
-                  {name.trim().charAt(0).toUpperCase()}
-                </div>
+                <Avatar name={name} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">
-                    {name} {!complete && <span className="ml-2 inline-block rounded-full bg-soft px-2 py-0.5 text-xs text-warn">Profile incomplete</span>}
+                  <p className="font-semibold flex items-center gap-2">
+                    {name} 
+                    {!complete && <Badge tone="warn">Profile incomplete - wait for mentor</Badge>}
                   </p>
                   <p className="text-sm text-muted">{r.headline || "No headline yet"}</p>
-                  <p className="text-sm text-muted">{[r.job_title, r.organisation].filter(Boolean).join(" at ") || "No role given"} · {r.years_experience} yrs · {r.education || "No education given"}</p>
+                  <p className="text-sm text-muted">
+                    {[r.job_title, r.organisation].filter(Boolean).join(" at ") || "No role given"} · {r.years_experience} yrs · {r.education || "No education given"}
+                  </p>
                   
                   <div className="mt-1">
                     {one(r.category) && <span className="chip">{one(r.category)!.name}</span>}
+                    {r.custom_category && <span className="chip">{r.custom_category}</span>}
                     {r.skills.map((s) => <span key={s} className="chip">{s}</span>)}
                   </div>
+                  
                   {r.bio && <p className="mt-2 text-sm">{r.bio}</p>}
+                  
+                  {r.linkedin_url ? (
+                    <p className="mt-2 text-sm">
+                      <b>LinkedIn:</b> <a href={r.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-brand underline">{r.linkedin_url}</a>
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm text-danger">Missing LinkedIn Profile</p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <ActionButton label="Approve" pendingLabel="Approving…" action={reviewMentorAction.bind(null, r.id, "approved")} />
@@ -90,11 +87,8 @@ export default async function Approvals() {
               <div key={r.id} className="card flex items-center justify-between py-3">
                 <span>{one(r.profile)?.full_name}</span>
                 <span className="flex items-center gap-3">
-                  <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.approval_status === "approved" ? "bg-soft text-brand" : "bg-soft text-danger"}`}>
-                    {r.approval_status}
-                  </span>
+                  <Badge tone={r.approval_status === "approved" ? "ok" : "bad"}>{r.approval_status}</Badge>
                   <span className="text-xs text-muted">{r.reviewed_at ? formatDate(r.reviewed_at) : ""}</span>
-                  
                   {r.approval_status === "rejected" ? (
                     <ActionButton variant="outline" label="Approve" action={reviewMentorAction.bind(null, r.id, "approved")} />
                   ) : (
