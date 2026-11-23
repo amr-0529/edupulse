@@ -4,7 +4,8 @@ import { MentorProfileForm } from "@/components/forms";
 import { AvatarUploader } from "@/components/session-ui";
 import type { Category } from "@/lib/types";
 
-export default async function MentorProfile() {
+export default async function MentorProfile({ searchParams }: { searchParams: Promise<{ incomplete?: string }> }) {
+  const sp = await searchParams;
   const me = await requireRole("mentor");
   const supabase = await createClient();
   
@@ -22,6 +23,16 @@ export default async function MentorProfile() {
           {mp?.approval_status ?? "pending"}
         </span>
       </div>
+
+      {sp.incomplete === "true" && (
+        <div className="card mb-6 border-warn bg-warn/10">
+          <h2 className="font-bold text-warn">Action Required: Complete Your Profile</h2>
+          <p className="text-sm text-ink mt-1">
+            Before you can access the rest of your dashboard and be reviewed by the Admin, you must complete your profile. 
+            Ensure you fill in your Headline, Mentoring Field (or custom field), Skills, Bio, and LinkedIn URL.
+          </p>
+        </div>
+      )}
       
       <AvatarUploader userId={me.id} name={me.full_name} path={pr?.avatar_path ?? null} />
       

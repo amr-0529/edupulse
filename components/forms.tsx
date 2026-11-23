@@ -41,7 +41,7 @@ function PasswordInput({
 }
 
 export function LoginForm({ notice }: { notice?: { text: string; tone: "ok" | "bad" } }) {
-  const [serverState, action] = useActionState(signInAction, initialState);
+  const [serverState, action, isPending] = useActionState(signInAction, initialState);
   const cv = useClientValidation((fd) => formErrors(loginSchema, loginInput(fd)));
   const state = cv.merge(serverState);
   
@@ -60,7 +60,7 @@ export function LoginForm({ notice }: { notice?: { text: string; tone: "ok" | "b
       <FieldError state={state} name="password" />
       
       <FormMessage state={state} />
-      <SubmitButton className="mt-4 w-full" pending="Signing in…">Log in</SubmitButton>
+      <SubmitButton className="mt-4 w-full" pending="Signing in…" isPending={isPending}>Log in</SubmitButton>
       <p className="mt-3 text-center text-sm"><Link href="/forgot-password" className="text-emerald-700 underline">Forgot your password?</Link></p>
       <p className="mt-3 text-center text-sm text-zinc-600">New here? <Link href="/register" className="text-emerald-700 underline">Create an account</Link></p>
     </form>
@@ -70,7 +70,7 @@ export function LoginForm({ notice }: { notice?: { text: string; tone: "ok" | "b
 }
 
 export function RegisterForm({ initialRole = "student" }: { initialRole?: "student" | "mentor" }) {
-  const [serverState, action] = useActionState(signUpAction, initialState);
+  const [serverState, action, isPending] = useActionState(signUpAction, initialState);
   const cv = useClientValidation((fd) => formErrors(registerSchema, registerInput(fd)));
   const state = cv.merge(serverState);
 
@@ -108,7 +108,7 @@ export function RegisterForm({ initialRole = "student" }: { initialRole?: "stude
       <FieldError state={state} name="password" />
       
       <FormMessage state={state} />
-      <SubmitButton className="mt-4 w-full" pending="Creating account…">Create account</SubmitButton>
+      <SubmitButton className="mt-4 w-full" pending="Creating account…" isPending={isPending}>Create account</SubmitButton>
       <p className="mt-3 text-center text-sm text-zinc-600">Already registered? <Link href="/login" className="text-emerald-700 underline">Log in</Link></p>
     </form>
   );
@@ -121,12 +121,12 @@ export function StudentProfileForm({
   fields: string[];
   initial: { fullName: string; institution: string; fieldOfStudy: string; yearOfStudy: string; interests: string; bio: string };
 }) {
-  const [serverState, action] = useActionState(updateStudentProfile, initialState);
+  const [serverState, action, isPending] = useActionState(updateStudentProfile, initialState);
   const cv = useClientValidation((fd) => formErrors(studentProfileSchema, { fullName: fd.get("fullName"), institution: fd.get("institution"), fieldOfStudy: fd.get("fieldOfStudy"), yearOfStudy: fd.get("yearOfStudy"), interests: fd.get("interests"), bio: fd.get("bio") ?? "" }));
   const state = cv.merge(serverState);
   
   return (
-    <form action={action} onSubmit={cv.onSubmit} className="card max-w-xl" noValidate>
+    <form action={action} className="card max-w-xl" noValidate>
       <label className="label mt-0" htmlFor="fullName">Full name</label>
       <input id="fullName" name="fullName" className="input" maxLength={60} defaultValue={(state.values?.fullName as string) || initial.fullName} />
       <FieldError state={state} name="fullName" />
@@ -155,7 +155,7 @@ export function StudentProfileForm({
       <FieldError state={state} name="bio" />
       
       <FormMessage state={state} />
-      <SubmitButton className="mt-4" pending="Saving…">Save profile</SubmitButton>
+      <SubmitButton className="mt-4" pending="Saving…" isPending={isPending}>Save profile</SubmitButton>
     </form>
   );
 }
@@ -170,14 +170,14 @@ export function MentorProfileForm({
     yearsExperience: number; categoryId: string; customCategory?: string | null; linkedinUrl?: string | null; skills: string; bio: string; acceptingStudents: boolean;
   };
 }) {
-  const [serverState, action] = useActionState(updateMentorProfile, initialState);
+  const [serverState, action, isPending] = useActionState(updateMentorProfile, initialState);
   const cv = useClientValidation((fd) => formErrors(mentorProfileSchema, { fullName: fd.get("fullName"), headline: fd.get("headline"), jobTitle: fd.get("jobTitle") ?? "", organisation: fd.get("organisation") ?? "", education: fd.get("education") ?? "", yearsExperience: fd.get("yearsExperience"), categoryId: fd.get("categoryId"), customCategory: fd.get("customCategory"), linkedinUrl: fd.get("linkedinUrl"), skills: parseSkills(String(fd.get("skills") ?? "")), bio: fd.get("bio") ?? "", acceptingStudents: fd.get("acceptingStudents") === "on" }));
   const state = cv.merge(serverState);
 
   const [selectedCat, setSelectedCat] = useState<string>((state.values?.categoryId as string) || initial.categoryId || "");
 
   return (
-    <form action={action} onSubmit={cv.onSubmit} className="card max-w-xl" noValidate>
+    <form action={action} className="card max-w-xl" noValidate>
       <label className="label mt-0" htmlFor="fullName">Full name</label>
       <input id="fullName" name="fullName" className="input" maxLength={60} defaultValue={(state.values?.fullName as string) || initial.fullName} />
       <FieldError state={state} name="fullName" />
@@ -200,7 +200,7 @@ export function MentorProfileForm({
       <FieldError state={state} name="yearsExperience" />
 
       <label className="label" htmlFor="linkedinUrl">LinkedIn Profile URL</label>
-      <input id="linkedinUrl" name="linkedinUrl" type="url" placeholder="https://linkedin.com/in/yourname" className="input" defaultValue={(state.values?.linkedinUrl as string) || initial.linkedinUrl || ""} />
+      <input id="linkedinUrl" name="linkedinUrl" type="text" placeholder="https://linkedin.com/in/yourname" className="input" defaultValue={(state.values?.linkedinUrl as string) || initial.linkedinUrl || ""} />
       <FieldError state={state} name="linkedinUrl" />
       
       <label className="label" htmlFor="categoryId">Mentoring field</label>
@@ -233,7 +233,7 @@ export function MentorProfileForm({
       </label>
       
       <FormMessage state={state} />
-      <SubmitButton className="mt-4" pending="Saving…">Save profile</SubmitButton>
+      <SubmitButton className="mt-4" pending="Saving…" isPending={isPending}>Save profile</SubmitButton>
     </form>
   );
 }

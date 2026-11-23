@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { getUnreadCount } from "@/lib/queries";
@@ -10,7 +11,7 @@ export default async function MentorDashboard() {
   const supabase = await createClient();
   
   const [{ data: mp }, { data: conns }, { count: openSlots }, unread, { data: sess }, { data: fb }] = await Promise.all([
-    supabase.from("mentor_profiles").select("headline, category_id, custom_category, skills, bio, approval_status, accepting_students, linkedin_url").eq("id", me.id).single(),
+    supabase.from("mentor_profiles").select("*").eq("id", me.id).single(),
     supabase.from("connections").select("status").eq("mentor_id", me.id),
     supabase.from("availability_slots").select("id", { count: "exact", head: true }).eq("mentor_id", me.id).eq("status", "open").gt("ends_at", new Date().toISOString()),
     getUnreadCount(supabase, me.id),
@@ -18,18 +19,13 @@ export default async function MentorDashboard() {
     supabase.from("feedback").select("rating").eq("mentor_id", me.id),
   ]);
   
+  const isProfileIncomplete = !mp?.headline?.trim() || !(mp?.category_id || mp?.custom_category) || (mp?.skills?.length ?? 0) === 0 || !mp?.bio?.trim() || !mp?.linkedin_url?.trim();
+
+  if (isProfileIncomplete) {
+    redirect("/mentor/profile?incomplete=true");
+  }
+
   const pending = (conns ?? []).filter((c) => c.status === "pending").length;
-  const accepted = (conns ?? []).filter((c) => c.status === "accepted").length;
-  
-  const checks = [
-    ["Headline added", !!mp?.headline?.trim()],
-    ["Mentoring field chosen", !!(mp?.category_id || mp?.custom_category)],
-    ["At least one skill", (mp?.skills?.length ?? 0) > 0],
-    ["Bio written", !!mp?.bio?.trim()],
-    ["LinkedIn profile added", !!mp?.linkedin_url?.trim()],
-  ] as const;
-  
-  const done = checks.filter(([, ok]) => ok).length;
   const status = mp?.approval_status ?? "pending";
   
   const ratings = (fb ?? []).map((f) => f.rating);
@@ -54,7 +50,7 @@ export default async function MentorDashboard() {
           <div>
             <h3 className="font-bold text-warn">Awaiting Administrator Approval</h3>
             <p className="text-sm text-muted mt-1">
-              Your profile is currently under review. You must complete your profile to speed this up. You will not appear in student searches until approved.
+              Your profile is currently under review by the admin. You will not appear in student searches until approved.
             </p>
           </div>
         </div>
@@ -98,10 +94,16 @@ export default async function MentorDashboard() {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold">Profile Completeness</h2>
-            <Badge tone={done === checks.length ? "ok" : "warn"}>{done}/{checks.length}</Badge>
+            <Badge tone={isProfileIncomplete ? "warn" : "ok"}>
+              {5 - [ !mp?.headline?.trim(), !(mp?.category_id || mp?.custom_category), (mp?.skills?.length ?? 0) === 0, !mp?.bio?.trim(), !mp?.linkedin_url?.trim() ].filter(Boolean).length}/5
+            </Badge>
           </div>
           <ul className="space-y-2 text-sm">
-            {checks.map(([l, ok]) => <li key={l} className={ok ? "text-brand" : "text-muted"}>{ok ? "✓" : "○"} {l}</li>)}
+            <li className={mp?.headline?.trim() ? "text-brand" : "text-muted"}>{mp?.headline?.trim() ? "✓" : "○"} Headline added</li>
+            <li className={(mp?.category_id || mp?.custom_category) ? "text-brand" : "text-muted"}>{(mp?.category_id || mp?.custom_category) ? "✓" : "○"} Mentoring field chosen</li>
+            <li className={(mp?.skills?.length ?? 0) > 0 ? "text-brand" : "text-muted"}>{(mp?.skills?.length ?? 0) > 0 ? "✓" : "○"} At least one skill</li>
+            <li className={mp?.bio?.trim() ? "text-brand" : "text-muted"}>{mp?.bio?.trim() ? "✓" : "○"} Bio written</li>
+            <li className={mp?.linkedin_url?.trim() ? "text-brand" : "text-muted"}>{mp?.linkedin_url?.trim() ? "✓" : "○"} LinkedIn profile added</li>
           </ul>
           {!mp?.accepting_students && <p className="mt-4 text-sm text-warn font-semibold">You are currently hidden from discovery (not accepting students).</p>}
           <Link href="/mentor/profile" className="btn btn-outline btn-sm mt-4">Edit Profile</Link>
@@ -124,6 +126,7 @@ export default async function MentorDashboard() {
               ))}
             </ul>
           )}
+          <Link href="/mentor/sessions" className="btn btn-outline btn-sm mt-4">Manage sessions</Link>
         </div>
       </div>
     </div>
